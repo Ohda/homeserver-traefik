@@ -1,2 +1,2 @@
 .env
-HTTPS_CERT
+*.log
