@@ -1,0 +1,51 @@
+name: traefik
+
+services: 
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    restart: unless-stopped
+    command:
+      # --providers.docker : pour détecter la configuration via labels Docker
+      - "--providers.docker=true"
+
+      # (Optionnel) Permet d'avoir un dashboard sur http://<IP>:8080
+      - "--api.insecure=true"
+
+      # Entrypoints
+      - "--entrypoints.websecure.address=:443"
+
+      # Configuration Let's Encrypt DNS-01 via DuckDNS
+      - "--certificatesresolvers.myresolver.acme.email=${DUCKDNS_EMAIL}"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/homeserver-https-cert.json"
+      - "--certificatesresolvers.myresolver.acme.dnsChallenge=true"
+      - "--certificatesresolvers.myresolver.acme.dnsChallenge.provider=duckdns"
+      # Délai avant vérification (pour laisser le TXT se propager)
+      - "--certificatesresolvers.myresolver.acme.dnsChallenge.delayBeforeCheck=10"
+
+      # Redirection automatique HTTP -> HTTPS
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+
+    # On publie les ports 80 et 443
+    ports:
+      - "443:443"
+      # (Optionnel) Dashboard sur le port 8080
+      - "8080:8080"
+
+    environment:
+      # Variable d'env pour le token DuckDNS
+      - "DUCKDNS_TOKEN=${DUCKDNS_TOKEN}"
+
+    volumes:
+      # Socket Docker en lecture seule
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      # Répertoire de stockage pour les certificats
+      - "./homeserver-https-cert.json:/letsencrypt/homeserver-https-cert.json"
+
+    networks:
+      - homeserver
+      
+networks:
+  homeserver:
+    external: true
